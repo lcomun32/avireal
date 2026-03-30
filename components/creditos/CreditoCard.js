@@ -3,7 +3,7 @@ import CreditoBadge from './CreditoBadge'
 
 export default function CreditoCard({ credito }) {
   const progreso = Math.min(
-    Math.round(((credito.monto_total - (credito.saldo_pendiente ?? 0)) / credito.monto_total) * 100),
+    Math.round(((credito.total - (credito.saldo_pendiente ?? 0)) / credito.total) * 100),
     100
   )
 
@@ -15,7 +15,7 @@ export default function CreditoCard({ credito }) {
           <p className="font-semibold text-gray-900 text-sm leading-tight">
             {credito.clientes?.nombre ?? '—'}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5">DNI: {credito.clientes?.dni ?? '—'}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Puesto: {credito.puesto_id?? '—'}</p>
         </div>
         <CreditoBadge estado={credito.estado} />
       </div>
@@ -24,7 +24,7 @@ export default function CreditoCard({ credito }) {
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="bg-gray-50 rounded-lg p-2.5">
           <p className="text-xs text-gray-400 mb-0.5">Monto total</p>
-          <p className="font-bold text-gray-900">S/ {Number(credito.monto_total).toLocaleString('es-PE')}</p>
+          <p className="font-bold text-gray-900">S/ {Number(credito.total).toLocaleString('es-PE')}</p>
         </div>
         <div className="bg-gray-50 rounded-lg p-2.5">
           <p className="text-xs text-gray-400 mb-0.5">Saldo pendiente</p>
@@ -48,9 +48,9 @@ export default function CreditoCard({ credito }) {
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-1 border-t border-gray-50">
-        <div className="text-xs text-gray-400">
+        {/* <div className="text-xs text-gray-400">
           📅 {credito.cuotas} cuotas · {credito.tasa_interes}% TEA
-        </div>
+        </div> */}
         <Link
           href={`/creditos/${credito.id}`}
           className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition"

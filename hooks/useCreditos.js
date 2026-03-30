@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback } from 'react'
 
 export function useCreditos() {
-  const [creditos, setCreditos]   = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(null)
+  const [creditos, setCreditos] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(null)
 
   const fetchCreditos = useCallback(async () => {
     setLoading(true)
@@ -23,5 +23,5 @@ export function useCreditos() {
 
   useEffect(() => { fetchCreditos() }, [fetchCreditos])
 
-  return { creditos, loading, error, refetch: fetchCreditos }
+  return { creditos, setCreditos, loading, error, refetch: fetchCreditos } // ✅ +setCreditos
 }

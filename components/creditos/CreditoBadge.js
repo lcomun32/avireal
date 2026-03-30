@@ -1,7 +1,7 @@
 const config = {
   activo:   { label: 'Activo',   classes: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   vencido:  { label: 'Vencido',  classes: 'bg-red-100 text-red-700 border-red-200'             },
-  pagado:   { label: 'Pagado',   classes: 'bg-gray-100 text-gray-600 border-gray-200'          },
+  pagado:   { label: 'Pagado',   classes: 'bg-green-100 text-green-600 border-green-200'          },
   pendiente:{ label: 'Pendiente',classes: 'bg-amber-100 text-amber-700 border-amber-200'       },
 }
 
