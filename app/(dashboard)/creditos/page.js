@@ -269,7 +269,7 @@ export default function CreditosPage() {
             placeholder="Buscar por cliente..."
             value={busqueda}
             onChange={e => { setBusqueda(e.target.value); setPagina(1) }}
-            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full pl-9 pr-4 px-3 py-2 rounded-lg text-xs font-medium capitalize transition border border-gray-300  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
 

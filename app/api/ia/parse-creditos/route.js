@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
-
+//const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`
 const PUESTOS_VALIDOS = ['P1', 'P4', 'P5']
 
 const SYSTEM_PROMPT = `
@@ -17,12 +17,29 @@ Estructura exacta:
 }
 Reglas:
 - Si no mencionan puesto, usa P1.
-- Todos los nombres empiezan por mayuscula
+- Todos los nombres empiezan por mayuscula SIN tildes ni diacríticos (la base de datos no los usa).
 - "total" es siempre número positivo (ej: 25.50). "soles", "sol", "S/" indican monto.
 - "nota" es opcional, null si no hay.
 - Extrae TODOS los clientes mencionados, uno por línea.
 - El separador del monto o total es un "."
 `.trim()
+
+
+const normalizar = (str = '') =>
+  str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+// ── Sanitiza un nombre: sin tildes, Title Case ─────────────────
+const sanitizarNombre = (nombre = '') =>
+  normalizar(nombre)
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
 
 export async function POST(request) {
   const { transcripcion } = await request.json()
@@ -56,8 +73,13 @@ export async function POST(request) {
     const parsed = JSON.parse(text)
 
     // Sanitizar puesto por si Gemini inventa uno
-    if (parsed.puesto_id && !PUESTOS_VALIDOS.includes(parsed.puesto_id)) {
-      parsed.puesto_id = null
+    if (Array.isArray(parsed.lineas)) {
+      parsed.lineas = parsed.lineas.map(l => ({
+        ...l,
+        cliente_nombre: sanitizarNombre(l.cliente_nombre ?? ''),
+        total:          Math.abs(Number(l.total) || 0),   // siempre positivo
+        nota:           l.nota?.trim() || null,
+      }))
     }
 
     return NextResponse.json(parsed)
