@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export default function Footer() {
   const year = new Date().getFullYear()
 
@@ -8,8 +10,18 @@ export default function Footer() {
 
           {/* Marca */}
           <div className="flex items-center gap-2 text-gray-600">
-            <span className="text-lg">✈️</span>
-            <span className="font-semibold text-indigo-600">Avireal</span>
+            <span className="text-lg">
+                          <Image
+                            src="/logo.png"   // ← nombre exacto del archivo en /public
+                            alt="Avireal logo"
+                            width={30}
+                            height={40}
+                            className="rounded-full "
+                            priority                // carga inmediata al ser above the fold
+                          />
+
+            </span>
+            <span className="font-semibold text-yellow-600">Avireal</span>
             <span className="text-gray-400 text-sm">— Gestión de créditos y pagos</span>
           </div>
 

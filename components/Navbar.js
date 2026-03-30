@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const navLinks = [
   { href: '/clientes', label: 'Clientes',  icon: '👥' },
@@ -18,10 +19,17 @@ export default function Navbar({ user, onLogout }) {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
-              ✈️
+            <div className="w-8 h-8  rounded-lg flex items-center justify-center text-white text-sm font-bold">
+                          <Image
+                            src="/logo.png"   // ← nombre exacto del archivo en /public
+                            alt="Avireal logo"
+                            width={250}
+                            height={10}
+                            className="rounded-full "
+                            priority                // carga inmediata al ser above the fold
+                          />
             </div>
-            <span className="text-lg font-bold text-indigo-600 hidden sm:block">Avireal</span>
+            <span className="text-lg font-bold text-yellow-600 hidden sm:block">Avireal</span>
           </Link>
 
           {/* Links desktop */}

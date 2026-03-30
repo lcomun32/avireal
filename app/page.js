@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function Home() {
   const supabase = createClient()
@@ -62,8 +63,15 @@ export default function Home() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600 mb-4 shadow-lg">
-            <span className="text-3xl">✈️</span>
+          <div className="inline-flex items-center justify-center mb-4">
+            <Image
+              src="/logo.png"   // ← nombre exacto del archivo en /public
+              alt="Avireal logo"
+              width={250}
+              height={10}
+              className="rounded-full "
+              priority                // carga inmediata al ser above the fold
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Avireal</h1>
           <p className="text-gray-500 mt-1 text-sm">Gestión de créditos y pagos</p>
