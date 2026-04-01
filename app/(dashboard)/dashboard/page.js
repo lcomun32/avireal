@@ -49,9 +49,9 @@ export default function DashboardPage() {
         <h3 className="text-base font-semibold text-gray-800 mb-4">Accesos rápidos</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { label: 'Nuevo cliente',  href: '/clientes/nuevo', icon: '➕', desc: 'Registrar cliente' },
-            { label: 'Nuevo crédito',  href: '/creditos/nuevo', icon: '💳', desc: 'Asignar crédito'  },
-            { label: 'Registrar pago', href: '/pagos/nuevo',    icon: '💰', desc: 'Ingresar pago'    },
+            { label: 'Nuevo cliente',  href: '/clientes', icon: '➕', desc: 'Registrar cliente' },
+            { label: 'Nuevo crédito',  href: '/creditos', icon: '💳', desc: 'Asignar crédito'  },
+            { label: 'Registrar pago', href: '/pagos',    icon: '💰', desc: 'Ingresar pago'    },
           ].map(item => (
             <Link
               key={item.href}

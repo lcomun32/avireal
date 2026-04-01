@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'  // + useMemo
+import { useClientes, precalentarPuestos } from '@/hooks/useClientes'
 
 const PUESTOS      = ['P1', 'P4', 'P5']
 const METODOS      = ['efectivo', 'yape', 'transferencia', 'otro']
@@ -17,13 +18,198 @@ const leerBorrador    = () => {
   catch { return null }
 }
 
+
 const nuevaLinea = () => ({
   _id:            'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 5),
+  cliente_id:     null, 
   cliente_nombre: '',
   monto:          '',
   metodo:         'efectivo',
   observacion:    '',
 })
+
+
+function Highlight({ text, query }) {
+  if (!query.trim()) return <>{text}</>
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-indigo-100 text-indigo-800 font-semibold rounded px-0.5 not-italic">
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  )
+}
+
+
+// ── Buscador tipo Google para clientes ───────────────────────
+function ClienteSearchInput({ clienteId, clienteNombre, clientes, disabled, puestoId, onChange, inputRef }) {
+  const [query,  setQuery]  = useState(clienteNombre || '')
+  const [open,   setOpen]   = useState(false)
+  const [cursor, setCursor] = useState(-1)
+
+  // Sync cuando la IA o el restore cambian clienteNombre desde fuera
+  // useEffect(() => {
+  //   setQuery(clienteNombre || '')
+  // }, [clienteNombre])
+
+
+  // ── NUEVO: re-valida cuando cambia el puesto (nueva lista de clientes) ──
+  useEffect(() => {
+    if (!query.trim()) return
+    const match = clientes.find(
+      c => c.nombre.toLowerCase() === query.toLowerCase()
+    )
+    if (match && !clienteId) {
+      onChange({ cliente_id: match.id, cliente_nombre: match.nombre })
+    } else if (!match && clienteId) {
+      onChange({ cliente_id: null, cliente_nombre: query })
+    }
+  }, [clienteId, clientes, onChange, query])
+
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return []
+    return clientes
+      .filter(c => c.nombre.toLowerCase().includes(query.toLowerCase()))
+      .slice(0, 10)
+  }, [query, clientes])
+
+  const noEncontrado = open && query.trim() !== '' && filtered.length === 0
+
+  const selectCliente = (c) => {
+    setQuery(c.nombre)
+    setOpen(false)
+    setCursor(-1)
+    onChange({ cliente_id: c.id, cliente_nombre: c.nombre })
+  }
+
+  const handleChange = (e) => {
+    const val = e.target.value
+    setQuery(val)
+    setCursor(-1)
+    setOpen(true)
+    // Mientras escribe, limpiar el id hasta que haya match
+    onChange({ cliente_id: null, cliente_nombre: val })
+  }
+
+  const handleKeyDown = (e) => {
+    if (!open) { if (e.key === 'ArrowDown') setOpen(true); return }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setCursor(prev => Math.min(prev + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setCursor(prev => Math.max(prev - 1, -1))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (cursor >= 0 && filtered[cursor]) selectCliente(filtered[cursor])
+      else if (filtered.length === 1)      selectCliente(filtered[0])
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      setCursor(-1)
+    }
+  }
+
+  const handleBlur = () => {
+    // Pequeño delay para que el click en la lista se registre antes del cierre
+    setTimeout(() => {
+      setOpen(false)
+      setCursor(-1)
+      // Si el texto escrito coincide exactamente (case-insensitive), confirmar el match
+      if (query.trim()) {
+        const match = clientes.find(
+          c => c.nombre.toLowerCase() === query.toLowerCase()
+        )
+        if (match) onChange({ cliente_id: match.id, cliente_nombre: match.nombre })
+      }
+    }, 150)
+  }
+
+  const sinMatch = !!query.trim() && !clienteId
+
+  return (
+    <div className="relative">
+      {/* Input con icono lupa */}
+      <div className="relative">
+        <svg
+          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+        </svg>
+
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          disabled={disabled}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={disabled ? 'Seleccione puesto primero' : 'Buscar cliente…'}
+          onChange={handleChange}
+          onFocus={() => { if (query.trim()) setOpen(true) }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className={`w-full pl-8 pr-7 py-2 border rounded-lg text-sm
+            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+            ${disabled
+              ? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+              : sinMatch
+                ? 'border-red-300 bg-red-50 text-gray-900'
+                : clienteId
+                  ? 'border-green-400 bg-white text-gray-900'
+                  : 'border-gray-200 bg-white text-gray-900'}`}
+        />
+
+        {/* Indicador: ✓ si tiene match, ✕ si no */}
+        {!disabled && query.trim() !== '' && (
+          <span className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold
+            ${clienteId ? 'text-green-500' : 'text-red-400'}`}>
+            {clienteId ? '✓' : '✕'}
+          </span>
+        )}
+      </div>
+
+      {/* Dropdown de sugerencias */}
+      {open && !disabled && query.trim() !== '' && (
+        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+          {filtered.length > 0
+            ? filtered.map((c, i) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onMouseDown={() => selectCliente(c)}
+                    className={`w-full text-left px-3 py-2 text-sm transition
+                      ${i === cursor
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-gray-800 hover:bg-indigo-50 hover:text-indigo-700'}`}
+                  >
+                    {i === cursor
+                      ? c.nombre
+                      : <Highlight text={c.nombre} query={query} />}
+                  </button>
+                </li>
+              ))
+            : (
+              <li className="px-3 py-2.5 text-sm text-red-500 flex items-center gap-2">
+                <span>😕</span>
+                <span>
+                  <strong className="font-semibold">{query}</strong>
+                  {' '}no se encuentra en {puestoId || 'este puesto'}
+                </span>
+              </li>
+            )
+          }
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function NuevoPagoModal({ open, onClose, onCreado }) {
   const [puestoId,   setPuestoId]  = useState('')
@@ -34,6 +220,8 @@ export default function NuevoPagoModal({ open, onClose, onCreado }) {
   const [grabando,   setGrabando]  = useState(false)
   const [parseando,  setParseando] = useState(false)
   const [transcript, setTranscript]= useState('')
+
+  const { clientes, loading: loadingClientes } = useClientes({ puestoId: puestoId || null })
 
   const primerInputRef  = useRef(null)
   const recognitionRef  = useRef(null)
@@ -89,6 +277,9 @@ export default function NuevoPagoModal({ open, onClose, onCreado }) {
     l => l.cliente_nombre.trim() !== '' && Number(l.monto) > 0
   )
   const puedeGuardar = puestoId !== '' && lineasValidas.length > 0
+
+  const hayClientesSinMatch = lineasValidas.some(l => !l.cliente_id)
+
 
   // ── Submit ─────────────────────────────────────────────────
   const handleSubmit = async (e) => {
@@ -198,13 +389,26 @@ export default function NuevoPagoModal({ open, onClose, onCreado }) {
       if (data.puesto_id) setPuestoId(data.puesto_id)
 
       if (data.lineas?.length) {
-        setLineas(data.lineas.map(l => ({
-          ...nuevaLinea(),
-          cliente_nombre: l.cliente_nombre ?? '',
-          monto:          l.monto?.toString() ?? '',
-          metodo:         l.metodo ?? 'efectivo',
-          observacion:    l.observacion ?? '',
-        })))
+        setLineas(data.lineas.map(l => {
+
+          const match = clientes.find(c => c.nombre.toLowerCase() === l.cliente_nombre?.toLowerCase().trim())
+
+          return { 
+            ...nuevaLinea(), 
+            cliente_id: match?.id ?? null, 
+            cliente_nombre: match?.nombre ?? l.cliente_nombre, 
+            monto:          l.monto?.toString() ?? '',
+            metodo:         l.metodo ?? 'efectivo',
+            observacion:    l.observacion ?? '',
+          
+          }
+          // ...nuevaLinea(),
+          // cliente_nombre: l.cliente_nombre ?? '',
+          // monto:          l.monto?.toString() ?? '',
+          // metodo:         l.metodo ?? 'efectivo',
+          // observacion:    l.observacion ?? '',
+
+        }))
       }
     } catch (err) {
       setError('IA: ' + err.message)
@@ -318,12 +522,22 @@ export default function NuevoPagoModal({ open, onClose, onCreado }) {
                   <div key={linea._id} className="grid grid-cols-[1fr_90px_100px_32px] gap-2 items-center">
 
                     {/* Cliente */}
-                    <input
+                    {/* <input
                       ref={idx === 0 ? primerInputRef : null}
                       type="text" placeholder="Nombre cliente"
                       value={linea.cliente_nombre}
                       onChange={e => setLinea(linea._id, { cliente_nombre: e.target.value })}
                       className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    /> */}
+
+                    <ClienteSearchInput
+                      clienteId={linea.cliente_id}
+                      clienteNombre={linea.cliente_nombre}
+                      clientes={clientes}
+                      disabled={!puestoId || loadingClientes}
+                      puestoId={puestoId}
+                      onChange={changes => setLinea(linea._id, changes)}
+                      inputRef={idx === 0 ? primerInputRef : null}
                     />
 
                     {/* Monto */}

@@ -4,101 +4,126 @@ import { NextResponse } from 'next/server'
 export async function GET(request) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
+
   const clienteId = searchParams.get('cliente_id')
+  //const puestoId  = searchParams.get('puesto_id')
 
   let query = supabase
-    .from('creditos')
+    .from('creditos_resumen')
     .select('*')
     .order('creado_en', { ascending: false })
 
   if (clienteId) query = query.eq('cliente_id', clienteId)
+  //if (puestoId)  query = query.eq('puesto_id', puestoId)
 
-  const { data: creditos, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!creditos.length) return NextResponse.json([])
+  const { data, error } = await query
 
-  // ── 1. Pagos aplicados por crédito ───────────────────────────
-  const creditoIds = creditos.map(c => c.id)
-
-  const { data: pagoCreditoData } = await supabase
-    .from('pago_credito')
-    .select('credito_id, monto_aplicado, pago_id')
-    .in('credito_id', creditoIds)
-
-  const totalPagadoMap    = {}  // { credito_id: number }
-  const pagoIdsPorCredito = {}  // { credito_id: pago_id[] }
-
-  for (const pc of (pagoCreditoData ?? [])) {
-    totalPagadoMap[pc.credito_id] = (totalPagadoMap[pc.credito_id] ?? 0) + Number(pc.monto_aplicado ?? 0)
-    if (!pagoIdsPorCredito[pc.credito_id]) pagoIdsPorCredito[pc.credito_id] = []
-    pagoIdsPorCredito[pc.credito_id].push(pc.pago_id)
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // ── 2. Fecha del último pago por crédito ─────────────────────
-  const todosLosPagoIds = [...new Set((pagoCreditoData ?? []).map(pc => pc.pago_id).filter(Boolean))]
-  const ultimoPagoMap = {}  // { credito_id: fecha }
-
-  if (todosLosPagoIds.length) {
-    const { data: pagosData } = await supabase
-      .from('pagos')
-      .select('id, fecha')
-      .in('id', todosLosPagoIds)
-
-    for (const pago of (pagosData ?? [])) {
-      for (const [creditoId, pagoIds] of Object.entries(pagoIdsPorCredito)) {
-        if (pagoIds.includes(pago.id)) {
-          const actual = ultimoPagoMap[creditoId]
-          if (!actual || new Date(pago.fecha) > new Date(actual)) {
-            ultimoPagoMap[creditoId] = pago.fecha
-          }
-        }
-      }
-    }
-  }
-
-  const MS_POR_DIA = 1000 * 60 * 60 * 24
-  const hoy = Date.UTC(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    new Date().getDate()
-  )
-
-  // ── 3. Enriquecer + calcular estado dinámico ─────────────────
-const formatted = creditos.map(c => {
-  const total_pagado    = totalPagadoMap[c.id] ?? 0
-  const saldo_pendiente = Math.max(0, Number(c.total ?? 0) - total_pagado)
-  const progreso_pct    = c.total > 0 ? Math.round((total_pagado / Number(c.total)) * 100) : 0
-
-  // ✅ Calcular días desde la fecha del crédito (usando UTC para ignorar hora)
-  const fechaRef   = new Date(c.creado_en )
-  const fechaUTC   = Date.UTC(fechaRef.getFullYear(), fechaRef.getMonth(), fechaRef.getDate())
-  const diasPasados = Math.floor((hoy - fechaUTC) / MS_POR_DIA)
-
-  // pagado  → liquidado
-  // vencido → pendiente con 3+ días sin pagar
-  // pendiente → debe algo pero tiene menos de 3 días
-  const estado =
-    saldo_pendiente === 0  ? 'pagado'    :
-    diasPasados    >= 3    ? 'vencido'   :
-                             'pendiente'
-
-    return {
-      ...c,
-      total_pagado,
-      saldo_pendiente,
-      progreso_pct,
-      dias_pendiente: saldo_pendiente > 0 ? diasPasados : 0,
-      estado,                              // ✅ sobreescribe cualquier valor residual de la tabla
-      ultimo_pago_fecha: ultimoPagoMap[c.id] ?? null,
-      clientes: {
-        nombre: c.cliente_nombre,
-        dni: null,
-      },
-    }
-  })
-
-  return NextResponse.json(formatted)
+  return NextResponse.json(data)
 }
+
+
+// export async function GET(request) {
+//   const supabase = await createClient()
+//   const { searchParams } = new URL(request.url)
+//   const clienteId = searchParams.get('cliente_id')
+
+//   let query = supabase
+//     .from('creditos')
+//     .select('*')
+//     .order('creado_en', { ascending: false })
+
+//   if (clienteId) query = query.eq('cliente_id', clienteId)
+
+//   const { data: creditos, error } = await query
+//   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+//   if (!creditos.length) return NextResponse.json([])
+
+//   // ── 1. Pagos aplicados por crédito ───────────────────────────
+//   const creditoIds = creditos.map(c => c.id)
+
+//   const { data: pagoCreditoData } = await supabase
+//     .from('pago_credito')
+//     .select('credito_id, monto_aplicado, pago_id')
+//     .in('credito_id', creditoIds)
+
+//   const totalPagadoMap    = {}  // { credito_id: number }
+//   const pagoIdsPorCredito = {}  // { credito_id: pago_id[] }
+
+//   for (const pc of (pagoCreditoData ?? [])) {
+//     totalPagadoMap[pc.credito_id] = (totalPagadoMap[pc.credito_id] ?? 0) + Number(pc.monto_aplicado ?? 0)
+//     if (!pagoIdsPorCredito[pc.credito_id]) pagoIdsPorCredito[pc.credito_id] = []
+//     pagoIdsPorCredito[pc.credito_id].push(pc.pago_id)
+//   }
+
+//   // ── 2. Fecha del último pago por crédito ─────────────────────
+//   const todosLosPagoIds = [...new Set((pagoCreditoData ?? []).map(pc => pc.pago_id).filter(Boolean))]
+//   const ultimoPagoMap = {}  // { credito_id: fecha }
+
+//   if (todosLosPagoIds.length) {
+//     const { data: pagosData } = await supabase
+//       .from('pagos')
+//       .select('id, fecha')
+//       .in('id', todosLosPagoIds)
+
+//     for (const pago of (pagosData ?? [])) {
+//       for (const [creditoId, pagoIds] of Object.entries(pagoIdsPorCredito)) {
+//         if (pagoIds.includes(pago.id)) {
+//           const actual = ultimoPagoMap[creditoId]
+//           if (!actual || new Date(pago.fecha) > new Date(actual)) {
+//             ultimoPagoMap[creditoId] = pago.fecha
+//           }
+//         }
+//       }
+//     }
+//   }
+
+//   const MS_POR_DIA = 1000 * 60 * 60 * 24
+//   const hoy = Date.UTC(
+//     new Date().getFullYear(),
+//     new Date().getMonth(),
+//     new Date().getDate()
+//   )
+
+//   // ── 3. Enriquecer + calcular estado dinámico ─────────────────
+// const formatted = creditos.map(c => {
+//   const total_pagado    = totalPagadoMap[c.id] ?? 0
+//   const saldo_pendiente = Math.max(0, Number(c.total ?? 0) - total_pagado)
+//   const progreso_pct    = c.total > 0 ? Math.round((total_pagado / Number(c.total)) * 100) : 0
+
+//   // ✅ Calcular días desde la fecha del crédito (usando UTC para ignorar hora)
+//   const fechaRef   = new Date(c.creado_en )
+//   const fechaUTC   = Date.UTC(fechaRef.getFullYear(), fechaRef.getMonth(), fechaRef.getDate())
+//   const diasPasados = Math.floor((hoy - fechaUTC) / MS_POR_DIA)
+
+//   // pagado  → liquidado
+//   // vencido → pendiente con 3+ días sin pagar
+//   // pendiente → debe algo pero tiene menos de 3 días
+//   const estado =
+//     saldo_pendiente === 0  ? 'pagado'    :
+//     diasPasados    >= 3    ? 'vencido'   :
+//                              'pendiente'
+
+//     return {
+//       ...c,
+//       total_pagado,
+//       saldo_pendiente,
+//       progreso_pct,
+//       dias_pendiente: saldo_pendiente > 0 ? diasPasados : 0,
+//       estado,                              // ✅ sobreescribe cualquier valor residual de la tabla
+//       ultimo_pago_fecha: ultimoPagoMap[c.id] ?? null,
+//       clientes: {
+//         nombre: c.cliente_nombre,
+//         dni: null,
+//       },
+//     }
+//   })
+
+//   return NextResponse.json(formatted)
+// }
 
 export async function POST(request) {
   const supabase = await createClient()

@@ -5,6 +5,7 @@ import { useCreditos } from '@/hooks/useCreditos'
 import CreditoBadge from '@/components/creditos/CreditoBadge'
 import CreditoCard from '@/components/creditos/CreditoCard'
 import NuevoCreditoModal from '@/components/creditos/NuevoCreditoModal'
+import { formatFechaPeru } from '@/utils/fecha'
 
 //const ESTADOS = ['todos', 'pendiente', 'vencido', 'pagado']
 const ESTADOS = ['pendiente', 'vencido', 'pagado']
@@ -129,7 +130,7 @@ export default function CreditosPage() {
   const [sortKey, setSortKey]           = useState('creado_en')
   const [sortDir, setSortDir]           = useState('desc')
   const [pagina, setPagina]             = useState(1)
-  const POR_PAGINA = 10
+  const POR_PAGINA = 40
 
 
   const handleCreditoCreado = (nuevo) => {
@@ -424,15 +425,13 @@ export default function CreditosPage() {
 
                     <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                       {credito.ultimo_pago_fecha
-                        ? new Date(credito.ultimo_pago_fecha).toLocaleDateString('es-PE')
+                        ? formatFechaPeru(credito.ultimo_pago_fecha)
                         : <span className="text-gray-300">Sin pagos</span>
                       }
                     </td>
 
                     <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                      {credito.creado_en
-                        ? new Date(credito.creado_en).toLocaleDateString('es-PE')
-                        : '—'}
+                        {formatFechaPeru(credito.creado_en)}
                     </td>
 
                     <td className="px-4 py-3">
