@@ -129,6 +129,14 @@ export async function POST(request) {
   const supabase = await createClient()
   const body = await request.json()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+
   // ── MODO BATCH (formulario / audio-IA) ──────────────────────
   if (Array.isArray(body.lineas)) {
     const { puesto_id, puesto_nombre, lineas } = body
@@ -147,6 +155,7 @@ export async function POST(request) {
         total:          Number(l.total),
         nota:           l.nota?.trim()   || null,
         imagen_url:     l.imagen_url     ?? null,
+        company_id:     profile.company_id,
       }))
 
     if (!rows.length) {
@@ -184,7 +193,7 @@ export async function POST(request) {
 
   const { data, error } = await supabase
     .from('creditos')
-    .insert([{ cliente_id, cliente_nombre, puesto_id, puesto_nombre, total, nota, imagen_url }])
+    .insert([{ cliente_id, cliente_nombre, puesto_id, puesto_nombre, total, nota, imagen_url, company_id:     profile.company_id, }])
     .select()
     .single()
 

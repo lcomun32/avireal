@@ -2,6 +2,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { usePagos } from '@/hooks/usePagos'
 import NuevoPagoModal from '@/components/pagos/NuevoPagoModal'
+import { formatFechaPeru } from '@/utils/fecha'
 
 const METODOS      = ['efectivo', 'yape', 'transferencia', 'otro']
 const METODO_ICON  = { efectivo: '💵', yape: '📲', transferencia: '🏦', otro: '💳' }
@@ -334,11 +335,12 @@ export default function PagosPage() {
                     </td>
 
                     <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
-                      {pago.creado_en
+                      {formatFechaPeru(pago.creado_en,'')}
+                      {/* {pago.creado_en
                         ? new Date(pago.creado_en).toLocaleDateString('es-PE', {
                             day: '2-digit', month: 'short', year: 'numeric',
                           })
-                        : '—'}
+                        : '—'} */}
                     </td>
                   </tr>
                 ))

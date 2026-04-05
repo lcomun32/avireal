@@ -18,20 +18,50 @@ export async function GET(request) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
   const clienteId = searchParams.get('cliente_id')
-  const puestoId  = searchParams.get('puesto_id')    // filtro opcional
+  const puestoId  = searchParams.get('puesto_id')
+  const creditoId = searchParams.get('credito_id') // ← NUEVO
 
+  // ── Modo: pagos de un crédito específico ──────────────────
+  if (creditoId) {
+    const { data: pcRows, error: pcErr } = await supabase
+      .from('pago_credito')
+      .select('pago_id, monto_aplicado')
+      .eq('credito_id', creditoId)
+
+    if (pcErr) return NextResponse.json({ error: pcErr.message }, { status: 500 })
+    if (!pcRows?.length) return NextResponse.json([])
+
+    const pagoIds = pcRows.map(r => r.pago_id)
+    const pcMap = Object.fromEntries(pcRows.map(r => [r.pago_id, r.monto_aplicado]))
+
+    const { data: pagos, error } = await supabase
+      .from('pagos')
+      .select('*')
+      .in('id', pagoIds)
+      .order('creado_en', { ascending: false })
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Enriquecer con monto_aplicado a ESTE crédito
+    return NextResponse.json(
+      (pagos ?? []).map(p => ({ ...p, monto_aplicado: pcMap[p.id] ?? null }))
+    )
+  }
+
+  // ── Modo original: pagos por cliente ─────────────────────
   let query = supabase
     .from('pagos')
     .select('*')
     .order('creado_en', { ascending: false })
 
   if (clienteId) query = query.eq('cliente_id', clienteId)
+  // Fix del bug anterior: aplicar puestoId si viene
+  if (puestoId) query = query.eq('puesto_id', puestoId)
 
   const { data: pagos, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!pagos?.length) return NextResponse.json([])
 
-  // Enriquecer con las aplicaciones por crédito
   const pagoIds = pagos.map(p => p.id)
   const { data: aplicaciones } = await supabase
     .from('pago_credito')
@@ -54,24 +84,115 @@ export async function POST(request) {
   const supabase = await createClient()
   const body = await request.json()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+
+
   const {
     puesto_id,
     cliente_nombre,
+    credito_id,          
     monto,
     metodo      = 'efectivo',
     observacion = null,
   } = body
 
-  // ── Validación básica ────────────────────────────────────
-  if (!puesto_id?.trim() || !cliente_nombre?.trim() || Number(monto) <= 0) {
+
+  if (Number(monto) <= 0) {
+    return NextResponse.json({ error: 'monto debe ser > 0' }, { status: 400 })
+  }
+
+
+
+  const montoNum    = r2(Number(monto))
+  const nombreNorm  = normalizar(cliente_nombre)
+
+
+  // ────────────────────────────────────────────────────────
+  // MODO A: Pago individual → credito_id viene directo
+  // ────────────────────────────────────────────────────────
+  if (credito_id) {
+    const { data: credito, error: credErr } = await supabase
+      .from('creditos')
+      .select('id, total, cliente_id, cliente_nombre, puesto_id, creado_en')
+      .eq('id', credito_id)
+      .single()
+
+    if (credErr || !credito)
+      return NextResponse.json({ error: 'Crédito no encontrado' }, { status: 404 })
+
+    // Calcular saldo actual del crédito
+    const { data: pcData } = await supabase
+      .from('pago_credito')
+      .select('monto_aplicado')
+      .eq('credito_id', credito_id)
+
+    const totalPagado = (pcData ?? []).reduce((s, p) => r2(s + Number(p.monto_aplicado)), 0)
+    const saldo = r2(Math.max(0, Number(credito.total) - totalPagado))
+
+    if (saldo <= 0)
+      return NextResponse.json({ error: 'Este crédito ya está saldado' }, { status: 400 })
+
+    const aplicar = r2(Math.min(montoNum, saldo))
+
+    // Insertar pago
+    const { data: pago, error: pagoError } = await supabase
+      .from('pagos')
+      .insert([{
+        cliente_id:     credito.cliente_id,
+        cliente_nombre: credito.cliente_nombre,
+        monto:          montoNum,
+        metodo,
+        observacion:    observacion?.trim() || null,
+        company_id:     profile.company_id,
+      }])
+      .select()
+      .single()
+
+    if (pagoError)
+      return NextResponse.json({ error: pagoError.message }, { status: 500 })
+
+    // Insertar pago_credito
+    const { data: aplicacionesData, error: aplicError } = await supabase
+      .from('pago_credito')
+      .insert([{ pago_id: pago.id, credito_id, monto_aplicado: aplicar, company_id: profile.company_id }])
+      .select()
+
+    if (aplicError) {
+      await supabase.from('pagos').delete().eq('id', pago.id)
+      return NextResponse.json({ error: aplicError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      pago,
+      aplicaciones: aplicacionesData,
+      resumen: {
+        cliente_id:         credito.cliente_id,
+        cliente_nombre:     credito.cliente_nombre,
+        monto_pagado:       montoNum,
+        creditos_afectados: 1,
+        deuda_previa:       saldo,
+        deuda_restante:     r2(Math.max(0, saldo - montoNum)),
+        excedente:          r2(Math.max(0, montoNum - saldo)),
+      },
+    }, { status: 201 })
+  }
+
+  // ────────────────────────────────────────────────────────
+  // MODO B: Pago global → waterfall por cliente/puesto
+  // ────────────────────────────────────────────────────────
+  if (!puesto_id?.trim() || !cliente_nombre?.trim()) {
     return NextResponse.json(
-      { error: 'puesto_id, cliente_nombre y monto (> 0) son requeridos' },
+      { error: 'puesto_id y cliente_nombre son requeridos para pagos globales' },
       { status: 400 }
     )
   }
 
-  const montoNum    = r2(Number(monto))
-  const nombreNorm  = normalizar(cliente_nombre)
 
   // ── 1. Resolver cliente_id desde tabla clientes ──────────
   const { data: clientesData } = await supabase
@@ -143,9 +264,11 @@ export async function POST(request) {
     .insert([{
       cliente_id,
       cliente_nombre: nombre_final,
+      //puesto_id, 
       monto:          montoNum,
       metodo,
       observacion:    observacion?.trim() || null,
+      company_id:     profile.company_id,
     }])
     .select()
     .single()
@@ -171,6 +294,7 @@ export async function POST(request) {
       pago_id:        pago.id,
       credito_id:     credito.id,
       monto_aplicado: aplicar,
+      company_id:     profile.company_id,
     })
 
     restante = r2(restante - aplicar)
