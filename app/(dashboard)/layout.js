@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import { limpiarCacheClientes } from '@/hooks/useClientes' 
 
 export default function DashboardLayout({ children }) {
   const supabase = createClient()
@@ -34,6 +35,7 @@ export default function DashboardLayout({ children }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
+    limpiarCacheClientes()
     router.replace('/')
   }
 

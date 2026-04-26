@@ -9,8 +9,22 @@ const METODO_LABEL = {
   transferencia: '🏦 Transferencia',
 }
 
+const SkeletonRow = () => (
+  <div className="flex items-center justify-between px-4 py-2.5 gap-4 animate-pulse">
+    <div className="flex items-center gap-3 w-full">
+      <div className="w-5 h-5 rounded-full bg-gray-200" />
+      <div className="flex-1">
+        <div className="h-3 w-24 bg-gray-200 rounded mb-1" />
+        <div className="h-2 w-32 bg-gray-100 rounded" />
+      </div>
+    </div>
+    <div className="h-3 w-16 bg-gray-200 rounded" />
+  </div>
+)
+
 export default function CreditoPagosDetalle({ creditoId }) {
-  const [estado, setEstado] = useState('idle') // idle | loading | loaded | error
+  //const [estado, setEstado] = useState('idle') // idle | loading | loaded | error
+  const [estado, setEstado] = useState('loading')
   const [pagos, setPagos]   = useState([])
   const [errorMsg, setErrorMsg] = useState(null)
 
@@ -28,12 +42,13 @@ export default function CreditoPagosDetalle({ creditoId }) {
         })
     }, [creditoId])
 
-  if (estado === 'loading') return (
-    <div className="flex items-center gap-2 py-3 px-4 text-xs text-gray-400 animate-pulse">
-      <div className="w-3 h-3 rounded-full bg-indigo-300 animate-bounce" />
-      Cargando pagos...
+    if (estado === 'loading') return (
+    <div className="flex flex-col divide-y divide-gray-100">
+        {Array.from({ length: 1 }).map((_, i) => (
+        <SkeletonRow key={i} />
+        ))}
     </div>
-  )
+    )
 
   if (estado === 'error') return (
     <p className="py-3 px-4 text-xs text-red-500">⚠️ {errorMsg}</p>
@@ -46,10 +61,10 @@ export default function CreditoPagosDetalle({ creditoId }) {
   return (
     <div className="flex flex-col divide-y divide-gray-100">
       {pagos.map((pago, i) => (
-        <div key={pago.id} className="flex items-center justify-between px-4 py-2.5 gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+       <div key={pago.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-2 gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 w-full min-w-0">
             {/* Número e ícono */}
-            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-bold flex items-center justify-center">
+            <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-bold flex items-center justify-center">
               {i + 1}
             </span>
             <div className="min-w-0">

@@ -149,12 +149,12 @@ export default function CreditoCard({ grupo: grupoProp, credito, onPagar }) {
                       <span className="text-[10px] font-bold text-indigo-400">#{i + 1}</span>
                       <CreditoBadge estado={c.estado} />
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs grid text-gray-500 mt-0.5">
                       Total: <span className="font-semibold text-gray-700">
                         S/ {Number(c.total ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                       </span>
                       {saldo > 0 && (
-                        <> · Pendiente: <span className="font-semibold text-red-500">
+                        <> <span className="mt-2">Pendiente: </span><span className="font-semibold text-red-500">
                           S/ {saldo.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                         </span></>
                       )}

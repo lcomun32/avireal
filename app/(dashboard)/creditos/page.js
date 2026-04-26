@@ -300,7 +300,7 @@ function PagarClienteModal({ open, onClose, grupo, onPagado }) {
             </div>
 
             {/* Preview de distribución */}
-            {distribucion.length > 0 && (
+            {!grupo.credito_id_unico && distribucion.length > 0 && (
               <div className="bg-indigo-50 rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold text-indigo-700">Distribución automática (más antiguo primero):</p>
                 {distribucion.map((d, i) => (
@@ -320,12 +320,14 @@ function PagarClienteModal({ open, onClose, grupo, onPagado }) {
                     </span>
                   </div>
                 ))}
-                {excedeMonto && (
-                  <p className="text-xs text-amber-600 mt-1 pt-1 border-t border-amber-200">
-                    ⚠️ El monto supera el saldo total (S/ {grupo.saldo_pendiente.toLocaleString('es-PE')})
-                  </p>
-                )}
               </div>
+            )}
+
+            {/* Advertencia de excedente — siempre visible en ambos modos */}
+            {excedeMonto && (
+              <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                ⚠️ El monto supera el saldo total (S/ {grupo.saldo_pendiente.toLocaleString('es-PE')})
+              </p>
             )}
 
             {error && (

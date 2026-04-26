@@ -151,9 +151,7 @@ export default function ClientesPage() {
   const [pagina,       setPagina]     = useState(1)
   const POR_PAGINA = 10
 
-  const handleClienteCreado = (nuevo) => {
-    setClientes(prev => [nuevo, ...prev])
-  }
+
 
   // ── Puestos únicos disponibles ────────────────────────────
   const puestosDisponibles = useMemo(() => {
@@ -240,7 +238,7 @@ export default function ClientesPage() {
         <NuevoClienteModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
-          onCreado={handleClienteCreado}
+          onCreado={crearCliente}
         />
       </div>
 

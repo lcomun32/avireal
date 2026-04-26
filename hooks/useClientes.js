@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 
+const clientesCache = new Map()
+
 // ── Caché a nivel de módulo ───────────────────────────────────────
 const _cache = new Map()
 const makeKey = (puestoId, q) => `${puestoId ?? '__all__'}:${q.trim()}`
@@ -71,15 +73,33 @@ export function useClientes({ puestoId = null, q = '' } = {}) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
     })
+
     if (!res.ok) throw new Error('Error al crear cliente')
+
     const nuevo = await res.json()
-    setClientes(prev => {
-      const updated = [...prev, nuevo]
-      _cache.set(cacheKey, updated)
-      return updated
-    })
+
+    // 🔥 ACTUALIZAR TODO EL CACHE
+    for (const [key, lista] of _cache.entries()) {
+      const [puestoKey, qKey] = key.split(':')
+
+      const coincidePuesto =
+        puestoKey === '__all__' ||
+        puestoKey === String(nuevo.puesto_id)
+
+      const coincideBusqueda =
+        !qKey ||
+        nuevo.nombre.toLowerCase().includes(qKey.toLowerCase())
+
+      if (coincidePuesto && coincideBusqueda) {
+        _cache.set(key, [...lista, nuevo])
+      }
+    }
+
+    // 🔥 actualizar estado actual
+    setClientes(prev => [...prev, nuevo])
+
     return nuevo
-  }, [cacheKey])
+  }, [])
 
   const refetch = useCallback(() => fetchClientes({ force: true }), [fetchClientes])
 

@@ -510,7 +510,7 @@ export default function NuevoPagoModal({ open, onClose, onCreado }) {
               </div>
 
               {/* Cabecera columnas */}
-              <div className="grid grid-cols-[1fr_90px_100px_32px] gap-2 mb-1.5 px-1">
+              <div className="sm:grid hidden  grid-cols-[1fr_90px_100px_32px] gap-2 mb-1.5 px-1">
                 <span className="text-xs text-gray-400">Cliente</span>
                 <span className="text-xs text-gray-400">Monto</span>
                 <span className="text-xs text-gray-400">Método</span>
@@ -519,7 +519,7 @@ export default function NuevoPagoModal({ open, onClose, onCreado }) {
 
               <div className="space-y-2">
                 {lineas.map((linea, idx) => (
-                  <div key={linea._id} className="grid grid-cols-[1fr_90px_100px_32px] gap-2 items-center">
+                  <div key={linea._id} className="grid grid-cols-1 sm:grid-cols-[1fr_90px_100px_32px] gap-2 items-center ">
 
                     {/* Cliente */}
                     {/* <input
@@ -544,7 +544,7 @@ export default function NuevoPagoModal({ open, onClose, onCreado }) {
                     <div className="relative">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
                       <input
-                        type="number" min="0.01" step="0.01" placeholder="0.00"
+                        type="number" min="0.01" step="0.1" placeholder="0.00"
                         value={linea.monto}
                         onChange={e => setLinea(linea._id, { monto: e.target.value })}
                         className="w-full pl-7 pr-2 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -566,9 +566,15 @@ export default function NuevoPagoModal({ open, onClose, onCreado }) {
                     <button
                       type="button" onClick={() => quitarLinea(linea._id)}
                       disabled={lineas.length === 1}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition disabled:opacity-0 disabled:pointer-events-none"
+                      className="w-full h-8 flex items-center justify-center rounded-lg text-red-600 hover:text-red-700 bg-red-100 sm:px-0 hover:bg-red-200 transition disabled:opacity-0 disabled:pointer-events-none"
                     >×</button>
+                    
+                    <hr className='border-indigo-600 my-1.5 sm:hidden' ></hr>
+
+
                   </div>
+                  
+
                 ))}
               </div>
 

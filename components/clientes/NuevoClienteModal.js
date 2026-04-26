@@ -33,31 +33,27 @@ export default function NuevoClienteModal({ open, onClose, onCreado }) {
 
   const puedeGuardar = form.nombre.trim() !== ''
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!puedeGuardar || saving) return
-    setSaving(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/clientes', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          nombre:    form.nombre.trim(),
-          puesto_id: form.puesto_id || null,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Error al guardar')
-      onCreado(data)
-      onClose()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSaving(false)
-    }
+const handleSubmit = async (e) => {
+  e.preventDefault()
+  if (!puedeGuardar || saving) return
+
+  setSaving(true)
+  setError(null)
+
+  try {
+    await onCreado({
+      ...form,
+      nombre: form.nombre.trim(),
+      puesto_id: form.puesto_id || null,
+    })
+
+    onClose()
+  } catch (err) {
+    setError(err.message)
+  } finally {
+    setSaving(false)
   }
+}
 
   if (!open) return null
 
