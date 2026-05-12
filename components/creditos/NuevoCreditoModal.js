@@ -1025,11 +1025,22 @@ const puedeGuardar = puestoId !== ''
                         <input
                           type="text"
                           inputMode="decimal"
-                          min="0.0"
-                          step="0.10"
+                          pattern="[0-9]*[.,]?[0-9]*"
                           placeholder="0.00"
                           value={linea.total}
-                          onChange={e => setLinea(linea._id, { total: e.target.value })}
+                          onChange={e => {
+                            let value = e.target.value
+                              .replace(',', '.')
+                              .replace(/[^0-9.]/g, '')
+                              .replace(/(\..*)\./g, '$1')
+
+                            if (value.includes('.')) {
+                              const [entero, decimal] = value.split('.')
+                              value = `${entero}.${decimal.slice(0, 2)}`
+                            }
+
+                            setLinea(linea._id, { total: value })
+                          }}
                           className="w-full pl-7 pr-2 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         />
                     </div>

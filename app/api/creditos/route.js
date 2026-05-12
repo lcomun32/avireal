@@ -47,62 +47,111 @@ export async function POST(request) {
     .single()
 
   // ── MODO BATCH (formulario / audio-IA) ──────────────────────
-  if (Array.isArray(body.lineas)) {
-    const { puesto_id, puesto_nombre, lineas } = body
+if (Array.isArray(body.lineas)) {
+  const { puesto_id, puesto_nombre, lineas } = body
 
-    if (!puesto_id || !lineas.length) {
-      return NextResponse.json({ error: 'puesto_id y lineas son requeridos' }, { status: 400 })
-    }
+  if (!puesto_id || !lineas.length) {
+    return NextResponse.json({ error: 'puesto_id y lineas son requeridos' }, { status: 400 })
+  }
 
-    const rows = lineas
-      .filter(l => l.cliente_nombre?.trim() && Number(l.total) > 0)
-      .map(l => ({
-        cliente_id:     l.cliente_id     ?? null,
-        cliente_nombre: l.cliente_nombre.trim(),
+  const clienteIds = [
+    ...new Set(
+      lineas
+        .map(l => l.cliente_id)
+        .filter(Boolean)
+    )
+  ]
+
+  const { data: clientes, error: clientesError } = await supabase
+    .from('clientes')
+    .select('id, nombre, telefono')
+    .in('id', clienteIds)
+
+  if (clientesError) {
+    return NextResponse.json({ error: clientesError.message }, { status: 500 })
+  }
+
+  const clientesMap = new Map(
+    clientes.map(c => [c.id, c])
+  )
+
+  const rows = lineas
+    .filter(l => l.cliente_nombre?.trim() && Number(l.total) > 0)
+    .map(l => {
+      const cliente = clientesMap.get(l.cliente_id)
+
+      return {
+        cliente_id:     l.cliente_id ?? null,
+        cliente_nombre: l.cliente_nombre?.trim() || cliente?.nombre || null,
+        telefono:       cliente?.telefono ?? null,
         puesto_id,
         puesto_nombre,
         total:          Number(l.total),
-        nota:           l.nota?.trim()   || null,
-        imagen_url:     l.imagen_url     ?? null,
+        nota:           l.nota?.trim() || null,
+        imagen_url:     l.imagen_url ?? null,
         company_id:     profile.company_id,
-      }))
+      }
+    })
 
-    if (!rows.length) {
-      return NextResponse.json({ error: 'No hay líneas válidas' }, { status: 400 })
-    }
-
-    const { data, error } = await supabase
-      .from('creditos')
-      .insert(rows)   // Supabase batch nativo — 1 sola llamada a la DB
-      .select()
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    const formatted = data.map(c => ({
-      ...c,
-      estado:          'pendiente',
-      total_pagado:    0,
-      saldo_pendiente: Number(c.total ?? 0),
-      progreso_pct:    0,
-      clientes: { nombre: c.cliente_nombre, dni: null },
-    }))
-
-    return NextResponse.json(formatted, { status: 201 })
-  }
-
-  // ── MODO SINGLE (retro-compatibilidad) ─────────────────────
-  const { cliente_id, puesto_id, puesto_nombre, total, nota, imagen_url } = body
-  let cliente_nombre = body.cliente_nombre ?? null
-
-  if (cliente_id && !cliente_nombre) {
-    const { data: cliente } = await supabase
-      .from('clientes').select('nombre').eq('id', cliente_id).single()
-    if (cliente) cliente_nombre = cliente.nombre
+  if (!rows.length) {
+    return NextResponse.json({ error: 'No hay líneas válidas' }, { status: 400 })
   }
 
   const { data, error } = await supabase
     .from('creditos')
-    .insert([{ cliente_id, cliente_nombre, puesto_id, puesto_nombre, total, nota, imagen_url, company_id:     profile.company_id, }])
+    .insert(rows)
+    .select()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const formatted = data.map(c => ({
+    ...c,
+    estado:          'pendiente',
+    total_pagado:    0,
+    saldo_pendiente: Number(c.total ?? 0),
+    progreso_pct:    0,
+    clientes: { nombre: c.cliente_nombre, dni: null },
+  }))
+
+  return NextResponse.json(formatted, { status: 201 })
+}
+
+  // ── MODO SINGLE (retro-compatibilidad) ─────────────────────
+  const { cliente_id, puesto_id, puesto_nombre, total, nota, imagen_url } = body
+
+  let telefono = null
+  let cliente_nombre = body.cliente_nombre ?? null
+
+  if (cliente_id) {
+    const { data: cliente, error: clienteError } = await supabase
+      .from('clientes')
+      .select('id, nombre, telefono')
+      .eq('id', cliente_id)
+      .maybeSingle()
+      
+    if (clienteError) {
+      return NextResponse.json({ error: clienteError.message }, { status: 500 })
+    }
+
+    if (cliente) {
+      cliente_nombre = cliente_nombre ?? cliente.nombre
+      telefono = cliente.telefono
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('creditos')
+    .insert([{
+      cliente_id,
+      cliente_nombre,
+      telefono,
+      puesto_id,
+      puesto_nombre,
+      total,
+      nota,
+      imagen_url,
+      company_id: profile.company_id,
+    }])
     .select()
     .single()
 

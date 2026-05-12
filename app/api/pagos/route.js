@@ -124,6 +124,7 @@ export async function POST(request) {
         monto,
         metodo = "efectivo",
         observacion = null,
+        fecha_pago = null,
     } = body;
 
     if (Number(monto) <= 0) {
@@ -135,6 +136,9 @@ export async function POST(request) {
 
     const montoNum = r2(Number(monto));
     const nombreNorm = normalizar(cliente_nombre);
+    const creado_en = fecha_pago
+    ? `${fecha_pago}T12:00:00`
+    : new Date().toISOString();
 
     // ────────────────────────────────────────────────────────
     // MODO A: Pago individual → credito_id viene directo
@@ -175,16 +179,17 @@ export async function POST(request) {
         const aplicar = r2(Math.min(montoNum, saldo));
 
         // Insertar pago
-        const { data: pago, error: pagoError } = await supabase
+            const { data: pago, error: pagoError } = await supabase
             .from("pagos")
             .insert([
                 {
-                    cliente_id: credito.cliente_id,
-                    cliente_nombre: credito.cliente_nombre,
-                    monto: montoNum,
-                    metodo,
-                    observacion: observacion?.trim() || null,
-                    company_id: profile.company_id,
+                cliente_id: credito.cliente_id,
+                cliente_nombre: credito.cliente_nombre,
+                monto: montoNum,
+                metodo,
+                observacion: observacion?.trim() || null,
+                creado_en,
+                company_id: profile.company_id,
                 },
             ])
             .select()
@@ -336,6 +341,7 @@ export async function POST(request) {
                 monto: montoNum,
                 metodo,
                 observacion: observacion?.trim() || null,
+                creado_en,
                 company_id: profile.company_id,
             },
         ])

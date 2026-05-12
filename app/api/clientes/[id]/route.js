@@ -1,45 +1,83 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// GET /api/clientes/:id
-export async function GET(_, { params }) {
+export async function PATCH(request, { params }) {
   const supabase = await createClient()
-  const { id } = await params
-
-  const { data, error } = await supabase
-    .from('clientes')
-    .select('*, creditos(*)')  // trae créditos relacionados
-    .eq('id', id)
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 })
-  return NextResponse.json(data)
-}
-
-// PUT /api/clientes/:id
-export async function PUT(request, { params }) {
-  const supabase = await createClient()
-  const { id } = await params
   const body = await request.json()
 
-  const { data, error } = await supabase
-    .from('clientes')
-    .update(body)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
-}
-
-// DELETE /api/clientes/:id
-export async function DELETE(_, { params }) {
-  const supabase = await createClient()
   const { id } = await params
 
-  const { error } = await supabase.from('clientes').delete().eq('id', id)
+  if (!id) {
+    return NextResponse.json(
+      { error: 'id de cliente requerido' },
+      { status: 400 }
+    )
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  const {
+    nombre,
+    dni,
+    telefono,
+    email,
+    direccion,
+    puesto_id,
+  } = body
+
+  if (!nombre?.trim()) {
+    return NextResponse.json(
+      { error: 'nombre es requerido' },
+      { status: 400 }
+    )
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return NextResponse.json(
+      { error: 'No autenticado' },
+      { status: 401 }
+    )
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile?.company_id) {
+    return NextResponse.json(
+      { error: 'Usuario sin company_id' },
+      { status: 400 }
+    )
+  }
+
+  const payload = {
+    nombre: nombre.trim(),
+    dni: dni?.trim() || null,
+    telefono: telefono?.trim() || null,
+    email: email?.trim() || null,
+    direccion: direccion?.trim() || null,
+    puesto_id: puesto_id || null,
+  }
+
+  const { data, error } = await supabase
+    .from('clientes')
+    .update(payload)
+    .eq('id', id)
+    .eq('company_id', profile.company_id)
+    .select('id, company_id, nombre, dni, telefono, email, direccion, puesto_id')
+    .single()
+
+  if (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json(data)
 }

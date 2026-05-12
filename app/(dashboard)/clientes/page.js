@@ -98,7 +98,7 @@ function PuestoFilter({ opciones, seleccionados, onChange }) {
 }
 
 // ─── Card móvil ────────────────────────────────────────────
-function ClienteCard({ cliente }) {
+function ClienteCard({ cliente, onEditar }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
@@ -122,12 +122,15 @@ function ClienteCard({ cliente }) {
       </div>
 
       <div className="flex gap-2 pt-1">
-        <Link
-          href={`/clientes/${cliente.id}`}
+
+        <button
+          type="button"
+          onClick={() => onEditar(cliente)}
           className="flex-1 text-center py-1.5 text-xs font-medium bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition"
         >
-          Ver perfil
-        </Link>
+          Editar
+        </button>
+
         <Link
           href={`/creditos?cliente_id=${cliente.id}`}
           className="flex-1 text-center py-1.5 text-xs font-medium bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition"
@@ -144,6 +147,7 @@ export default function ClientesPage() {
   const { clientes, loading, error, refetch, setClientes, crearCliente } = useClientes()
 
   const [modalOpen,    setModalOpen]  = useState(false)
+  const [clienteEditando, setClienteEditando] = useState(null)
   const [busqueda,     setBusqueda]   = useState('')
   const [puestosFiltro, setPuestos]   = useState([])
   const [sortKey,      setSortKey]    = useState('nombre')
@@ -209,6 +213,28 @@ export default function ClientesPage() {
     setPagina(1)
   }
 
+  const editarCliente = async (id, payload) => {
+    const res = await fetch(`/api/clientes/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Error al editar cliente')
+    }
+
+    setClientes(prev =>
+      prev.map(c => (c.id === id ? data : c))
+    )
+
+    return data
+  }
+
   const SortIcon = ({ col }) =>
     sortKey !== col         ? <span className="text-gray-300 ml-1">↕</span>
     : sortDir === 'asc'     ? <span className="text-indigo-500 ml-1">↑</span>
@@ -229,7 +255,10 @@ export default function ClientesPage() {
         </div>
 
         <button
-          onClick={() => setModalOpen(true)}
+          onClick={() => {
+            setClienteEditando(null)
+            setModalOpen(true)
+          }}
           className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition shadow-sm"
         >
           <span>➕</span> Nuevo cliente
@@ -237,8 +266,13 @@ export default function ClientesPage() {
 
         <NuevoClienteModal
           open={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={() => {
+            setModalOpen(false)
+            setClienteEditando(null)
+          }}
           onCreado={crearCliente}
+          onEditado={editarCliente}
+          clienteInicial={clienteEditando}
         />
       </div>
 
@@ -400,6 +434,18 @@ export default function ClientesPage() {
                         >
                           Créditos
                         </Link>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClienteEditando(cliente)
+                            setModalOpen(true)
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition"
+                        >
+                          Editar
+                        </button>
+
                       </div>
                     </td>
 
@@ -466,7 +512,16 @@ export default function ClientesPage() {
               <p className="text-sm">No se encontraron clientes</p>
             </div>
           )
-          : paginados.map(c => <ClienteCard key={c.id} cliente={c} />)
+          : paginados.map(c => (
+            <ClienteCard
+              key={c.id}
+              cliente={c}
+              onEditar={(cliente) => {
+                setClienteEditando(cliente)
+                setModalOpen(true)
+              }}
+            />
+          ))
         }
 
         {!loading && filtrados.length > POR_PAGINA && (
