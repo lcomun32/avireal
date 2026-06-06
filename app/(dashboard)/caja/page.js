@@ -55,6 +55,15 @@ const PROVEEDOR_COLORES_TR = {
   Otro:    'bg-purple-50 hover:bg-purple-100 border-purple-100',
 }
 
+const PUESTO_COLORES = {
+  P1: 'bg-blue-50 border-blue-100',
+  P2: 'bg-green-50 border-green-100',
+  P3: 'bg-amber-50 border-amber-100',
+  P4: 'bg-green-50 border-green-100',
+  P5: 'bg-amber-50 border-amber-100',
+  P6: 'bg-cyan-50 border-cyan-100',
+}
+
 function StatCard({ icon, label, value, color }) {
   return (
     <div className={`bg-white rounded-xl border ${color.border} shadow-sm p-5`}>
@@ -193,6 +202,9 @@ export default function CajaPage() {
 
   //console.log(resumen)
 
+  const [archivoCamal, setArchivoCamal] = useState(null)
+  const [archivoCamalNombre, setArchivoCamalNombre] = useState('')
+
   const [expandidos, setExpandidos] = useState(() => {
     try {
       const guardado = localStorage.getItem('caja_expandidos')
@@ -223,6 +235,26 @@ export default function CajaPage() {
       // Actualiza cant. pollos por proveedor
       updateRow(catId, rowId, 'cantPollos', config.CANT_POLLOS_POR_PROVEEDOR?.[valor] ?? '')
     }
+  }
+
+  const handleArchivoCamal = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setArchivoCamal(file)
+    setArchivoCamalNombre(file.name)
+
+    // Guardar referencia simple dentro de la caja
+    // Por ahora NO sube a Supabase Storage, solo guarda el nombre.
+    replaceCategoria('archivoCamal', [
+      {
+        id: crypto.randomUUID(),
+        nombre: file.name,
+        tipo: file.type,
+        size: file.size,
+        cargadoEn: new Date().toISOString(),
+      },
+    ])
   }
 
   const handleKeyDown = (e, catId, rowIndex, campo, tipo) => {
@@ -473,9 +505,9 @@ const renderCardMovil = (cat, row, index) => {
   const isRemoving = removingRows.has(row.id)
 
 
-  const colorClass = cat.tipo === TIPO_TABLA.INGRESO
-    ? (PROVEEDOR_COLORES[row.proveedor] ?? 'bg-gray-50 border-gray-200')
-    : 'bg-gray-50 border-gray-200'
+  const colorClass = row.puesto
+  ? (PUESTO_COLORES[row.puesto] ?? 'bg-gray-50 border-gray-200')
+  : 'bg-gray-50 border-gray-200'
 
   // Grid 3 columnas con inline style — 100% fiable sin depender de Tailwind purge
   const grid3 = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }
@@ -904,7 +936,7 @@ const renderCardMovil = (cat, row, index) => {
 
       {/* ── Stats ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon="📊" label="Total Calculado" value={`S/ ${fmt(stats.ingresoMercaderia.porProveedor['Jonas'].total )}`}
+        <StatCard icon="📊" label="Total Calculado" value={`S/ ${fmt(stats?.ingresoMercaderia?.totalValor ?? 0)}`}
           color={{ border: 'border-emerald-100', bg: 'bg-emerald-50', text: 'text-emerald-700' }} />
         <StatCard icon="💳" label="Créditos del Día" value={`S/ ${fmt(resumen.credito)}`}
           color={{ border: 'border-amber-100', bg: 'bg-amber-50', text: 'text-amber-700' }} />
@@ -1032,6 +1064,50 @@ const renderCardMovil = (cat, row, index) => {
               </div>
 
 
+{cat.id === 'ingresoMercaderia' && (
+  <div className="mb-4 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/60 p-4">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h4 className="text-sm font-semibold text-indigo-800">
+          Archivo de ingreso al camal
+        </h4>
+        <p className="text-xs text-indigo-600 mt-0.5">
+          Puedes cargar una imagen, PDF o Excel como respaldo del ingreso.
+        </p>
+      </div>
+
+      <label className="inline-flex items-center justify-center cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+        Cargar archivo
+        <input
+          type="file"
+          accept="image/*,.pdf,.xlsx,.xls,.csv"
+          onChange={handleArchivoCamal}
+          className="hidden"
+        />
+      </label>
+    </div>
+
+    {archivoCamalNombre && (
+      <div className="mt-3 flex items-center justify-between rounded-md bg-white border border-indigo-100 px-3 py-2">
+        <span className="text-xs text-gray-700 truncate">
+          {archivoCamalNombre}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => {
+            setArchivoCamal(null)
+            setArchivoCamalNombre('')
+            replaceCategoria('archivoCamal', [])
+          }}
+          className="text-xs text-red-500 hover:text-red-700"
+        >
+          Quitar
+        </button>
+      </div>
+    )}
+  </div>
+)}
                   {/* Resumen ingreso */}
                   {cat.id === 'ingresoMercaderia' && subtotalesIngreso.length > 0 && (
                     <div className="mt-4 bg-indigo-50 p-4 rounded-lg border border-indigo-100">

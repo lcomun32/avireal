@@ -90,6 +90,7 @@ if (Array.isArray(body.lineas)) {
         nota:           l.nota?.trim() || null,
         imagen_url:     l.imagen_url ?? null,
         company_id:     profile.company_id,
+        fecha: l.fecha
       }
     })
 
@@ -151,6 +152,7 @@ if (Array.isArray(body.lineas)) {
       nota,
       imagen_url,
       company_id: profile.company_id,
+      fecha
     }])
     .select()
     .single()

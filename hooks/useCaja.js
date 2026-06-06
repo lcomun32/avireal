@@ -67,7 +67,7 @@ const defaultCaja = (fecha = getToday(), { cantJava = 5.00, precioKg = 8.30 } = 
   fecha,
   ingresoMercaderia: [
     // 30 de Jonas
-    ...Array.from({ length: 30 }, () => ({
+    ...Array.from({ length: 1 }, () => ({
       ...makeRow.ingresoMercaderia(),
       proveedor: 'Jonas',
       cantJava: cantJava,
@@ -75,7 +75,7 @@ const defaultCaja = (fecha = getToday(), { cantJava = 5.00, precioKg = 8.30 } = 
     })),
 
     // 2 de otro proveedor
-    ...Array.from({ length: 2 }, () => ({
+    ...Array.from({ length: 1 }, () => ({
       ...makeRow.ingresoMercaderia(),
       proveedor: 'Dante', 
       cantJava: 0,
@@ -83,29 +83,29 @@ const defaultCaja = (fecha = getToday(), { cantJava = 5.00, precioKg = 8.30 } = 
       precioKg: 0,
     })),
 
-    ...Array.from({ length: 2 }, () => ({
+    ...Array.from({ length: 1 }, () => ({
       ...makeRow.ingresoMercaderia(),
       proveedor: 'Externo', 
       cantJava: 0,
       cantPollos: 0,
       precioKg: 0,
     })),
-  ],
-  reporte:        PUESTOS.map((puesto) => ({ ...makeRow.reporte(),        puesto })),
-  compras:        PUESTOS.map((puesto) => ({ ...makeRow.compras(),        puesto })),
-  basura:         PUESTOS.map((puesto) => ({ ...makeRow.basura(),         puesto })),
-  error:          PUESTOS.map((puesto) => ({ ...makeRow.error(),          puesto })),
-  culqi:          PUESTOS.map((puesto) => ({ ...makeRow.culqi(),          puesto })),
-  plinYape:       PUESTOS.map((puesto) => ({ ...makeRow.plinYape(),       puesto })),
-  caja:           PUESTOS.map((puesto) => ({ ...makeRow.caja(),           puesto })),
-  //gasto:          [makeRow.gasto()],
-  gasto:           PUESTOS.map((puesto) => ({ ...makeRow.gasto(),         puesto })),
-  credito:        [],
-  pagos:          [],
-  devolucionAyer: PUESTOS.map((puesto) => ({ ...makeRow.devolucionAyer(), puesto })),
-  devolucionHoy:  PUESTOS.map((puesto) => ({ ...makeRow.devolucionHoy(),  puesto })),
-  balanza:        PUESTOS.map((puesto) => ({ ...makeRow.balanza(),        puesto })), 
-})
+    ],
+    reporte:        PUESTOS.map((puesto) => ({ ...makeRow.reporte(),        puesto })),
+    compras:        PUESTOS.map((puesto) => ({ ...makeRow.compras(),        puesto })),
+    basura:         PUESTOS.map((puesto) => ({ ...makeRow.basura(),         puesto })),
+    error:          PUESTOS.map((puesto) => ({ ...makeRow.error(),          puesto })),
+    culqi:          PUESTOS.map((puesto) => ({ ...makeRow.culqi(),          puesto })),
+    plinYape:       PUESTOS.map((puesto) => ({ ...makeRow.plinYape(),       puesto })),
+    caja:           PUESTOS.map((puesto) => ({ ...makeRow.caja(),           puesto })),
+    //gasto:          [makeRow.gasto()],
+    gasto:           PUESTOS.map((puesto) => ({ ...makeRow.gasto(),         puesto })),
+    credito:        [],
+    pagos:          [],
+    devolucionAyer: PUESTOS.map((puesto) => ({ ...makeRow.devolucionAyer(), puesto })),
+    devolucionHoy:  PUESTOS.map((puesto) => ({ ...makeRow.devolucionHoy(),  puesto })),
+    balanza:        PUESTOS.map((puesto) => ({ ...makeRow.balanza(),        puesto })), 
+  })
 
 
 // ─────────────────────────────────────────────────────────────
